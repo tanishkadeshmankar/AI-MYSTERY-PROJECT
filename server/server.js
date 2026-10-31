@@ -7,16 +7,30 @@ import { generateMystery } from './src/mysteryService.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:5174')
+const DEFAULT_PORT = Number(process.env.PORT) || 5000;
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const isLocalDevelopmentOrigin = (origin) => {
+  if (!origin) return true;
+
+  try {
+    const { protocol, hostname } = new URL(origin);
+    const isPrivateLan = /^((192\.168\.)|(10\.)|(172\.(1[6-9]|2[0-9]|3[0-1])\.)|local\.)/.test(hostname);
+    return ['http:', 'https:'].includes(protocol) && (
+      ['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname) || isPrivateLan
+    );
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || isLocalDevelopmentOrigin(origin)) {
         callback(null, true);
         return;
       }
@@ -81,6 +95,21 @@ app.use((err, req, res, next) => {
 
 connectDatabase();
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+const startServer = (port) => {
+  const server = app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      const nextPort = port + 1;
+      console.warn(`Port ${port} is in use. Trying ${nextPort} instead.`);
+      startServer(nextPort);
+      return;
+    }
+
+    throw error;
+  });
+};
+
+startServer(DEFAULT_PORT);
