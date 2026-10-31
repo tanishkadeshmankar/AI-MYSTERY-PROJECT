@@ -1,5 +1,32 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+const sceneImagesByCategory = {
+  'murder mystery': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+  theft: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1200&q=80',
+  'missing object': 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80',
+  cybercrime: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80',
+  'suspicious incident': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
+  'corporate mystery': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+};
+
+const suspectPortraits = [
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=400&q=80',
+];
+
+const normalizeBackground = (background) => {
+  const words = String(background || 'A new mystery begins as strange clues point toward a hidden truth.').trim().match(/\S+/g) || [];
+  const fillerWords = 'The clues reveal the truth when timing, access, and motive are examined together.'.match(/\S+/g);
+  const result = words.slice(0, 50);
+
+  while (result.length < 50) {
+    result.push(fillerWords[(result.length - words.length) % fillerWords.length]);
+  }
+
+  return `${result.join(' ').replace(/[.!?,;:]+$/, '')}.`;
+};
+
 const buildMockMystery = ({ title, scenario, category, difficulty }) => {
   const normalizedTitle = (title || scenario || 'The Vanishing Ledger').trim() || 'The Vanishing Ledger';
   const normalizedCategory = category || 'Theft';
@@ -9,7 +36,6 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
   const categoryProfiles = {
     'murder mystery': {
       location: 'Blackstone Manor, East Wing',
-      sceneImage: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
       suspects: [
         { name: 'Elena Voss', occupation: 'Estate Manager' },
         { name: 'Marcus Hale', occupation: 'Private Investigator' },
@@ -19,7 +45,6 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
     },
     theft: {
       location: 'Chronos Museum, East Wing Archive',
-      sceneImage: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1200&q=80',
       suspects: [
         { name: 'Mara Quinn', occupation: 'Archivist' },
         { name: 'Dorian Vale', occupation: 'Security Consultant' },
@@ -29,7 +54,6 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
     },
     'missing object': {
       location: 'Silverline Lab, Locked Vault',
-      sceneImage: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1200&q=80',
       suspects: [
         { name: 'Sloane Pierce', occupation: 'Research Lead' },
         { name: 'Julian Cross', occupation: 'Maintenance Supervisor' },
@@ -39,7 +63,6 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
     },
     cybercrime: {
       location: 'North Harbor Data Center, Secure Server Floor',
-      sceneImage: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80',
       suspects: [
         { name: 'Iris Flint', occupation: 'Systems Engineer' },
         { name: 'Kian Moss', occupation: 'Threat Analyst' },
@@ -49,7 +72,6 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
     },
     'suspicious incident': {
       location: 'Hawthorne Hotel, Service Corridor',
-      sceneImage: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
       suspects: [
         { name: 'Theo Grant', occupation: 'Night Manager' },
         { name: 'Leah Ortiz', occupation: 'Concierge' },
@@ -59,7 +81,6 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
     },
     'corporate mystery': {
       location: 'Verdant Capital, Executive Tower',
-      sceneImage: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
       suspects: [
         { name: 'Ava Mercer', occupation: 'Finance Director' },
         { name: 'Nathan Pike', occupation: 'Board Advisor' },
@@ -70,6 +91,7 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
   };
 
   const profile = categoryProfiles[normalizedCategory.toLowerCase()] || categoryProfiles.theft;
+  const sceneImage = sceneImagesByCategory[normalizedCategory.toLowerCase()] || sceneImagesByCategory.theft;
   const suspects = profile.suspects.map((person, index) => ({
     id: `suspect_${String(index + 1).padStart(2, '0')}`,
     name: person.name,
@@ -86,11 +108,7 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
       : index === 0
         ? 'I saw the problem, but I did not cause it.'
         : 'I was under pressure and scared, but I never touched the key item.',
-    avatar: [
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-      'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=400&q=80',
-    ][index],
+    avatar: suspectPortraits[index],
     motive: index === 1
       ? `${person.name} had the access, timing, and pressure to move the story in their favor and protect their own gain.`
       : index === 0
@@ -102,7 +120,7 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
   const caseTitle = normalizedTitle || 'Mystery Case';
   const shortTitle = caseTitle.length > 50 ? `${caseTitle.slice(0, 47)}...` : caseTitle;
   const sceneSentence = safeScenario.endsWith('.') ? safeScenario : `${safeScenario}.`;
-  const background = `${sceneSentence} The case grew fast. Soon, the whole room was full of secrets, blame, and one question: who was hiding the truth?`;
+  const background = normalizeBackground(`${sceneSentence} At ${profile.location}, ${suspects[0].name} found a clue while ${suspects[1].name} had access to the scene. ${suspects[2].name} gave an account that conflicts with the timeline. Messages, photographs, and witness notes point toward a hidden motive.`);
 
   const evidence = [
     {
@@ -120,7 +138,7 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
       title: 'Scene photo',
       description: profile.evidenceBase,
       timestamp: '2026-10-14T00:44:00',
-      imageUrl: profile.sceneImage,
+      imageUrl: sceneImage,
     },
     {
       id: 'ev_03',
@@ -166,7 +184,7 @@ const buildMockMystery = ({ title, scenario, category, difficulty }) => {
     dateTime: 'October 14, 2026 · 11:45 PM',
     category: normalizedCategory,
     difficulty: normalizedDifficulty,
-    sceneImage: profile.sceneImage,
+    sceneImage,
     soundMood: normalizedCategory.toLowerCase() === 'cybercrime' ? 'tech-hum' : 'low-hum',
     suspects,
     evidence,
@@ -201,16 +219,28 @@ export const generateMystery = async ({ title, scenario, category, difficulty })
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `Create a fictional, internally consistent mystery in valid JSON. Output only JSON with fields: title, background, incident, location, dateTime, category, difficulty, suspects as array with id, name, age, occupation, relationship, bio, statement, avatar, motive, evidence as array with id, type, title, sender, recipient, content, timestamp, description, imageUrl, camera, observation, witness, statement, timeline as array with time, description, person, location, redHerrings as array of strings, solution with culpritId, motive, explanation, supportingEvidenceIds. The scenario is: ${scenario}. Category: ${category}. Difficulty: ${difficulty}. Ensure exactly one culprit and logical clue consistency.`;
+    const prompt = `Create a fictional, internally consistent mystery in valid JSON. Output only JSON with fields: title, background, incident, location, dateTime, category, difficulty, suspects as array with id, name, age, occupation, relationship, bio, statement, avatar, motive, evidence as array with id, type, title, sender, recipient, content, timestamp, description, imageUrl, camera, observation, witness, statement, timeline as array with time, description, person, location, redHerrings as array of strings, solution with culpritId, motive, explanation, supportingEvidenceIds. The background must be exactly 50 words. Make the suspects' names, jobs, motives, and statements fit the scenario and category. Keep clues consistent and connected to the culprit. Use a scene image that fits the scenario and category. The scenario is: ${scenario}. Category: ${category}. Difficulty: ${difficulty}. Ensure exactly one culprit and logical clue consistency.`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     const jsonString = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(jsonString);
 
+    const sceneImage = sceneImagesByCategory[(category || 'theft').toLowerCase()] || sceneImagesByCategory.theft;
+    const suspects = Array.isArray(parsed.suspects)
+      ? parsed.suspects.map((suspect, index) => ({ ...suspect, avatar: suspectPortraits[index % suspectPortraits.length] }))
+      : parsed.suspects;
+    const evidence = Array.isArray(parsed.evidence)
+      ? parsed.evidence.map((item) => item.type === 'photo' ? { ...item, imageUrl: sceneImage } : item)
+      : parsed.evidence;
+
     return {
       id: `mystery_${Date.now()}`,
       ...parsed,
+      background: normalizeBackground(parsed.background),
+      sceneImage,
+      suspects,
+      evidence,
     };
   } catch (error) {
     console.warn('Gemini generation failed, falling back to mock mystery.', error.message);
